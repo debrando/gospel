@@ -1,44 +1,44 @@
-package main 
+package main
 
 import (
+	"flag"
 	"html/template"
-    "net/http"
-    "flag"
-    "strconv"
+	"log"
+	"net/http"
+	"strconv"
 )
 
-var home string
 var port int
 var tmpls *template.Template
 
 func init() {
 	// parameters
-	flag.StringVar(&home, "home", "/usr/local/gospel", "Installing path")
 	flag.IntVar(&port, "port", 8088, "Listening port")
-	flag.Parse()	
+	flag.Parse()
 	// templates
 	tmpls = template.Must(template.ParseFiles(tmplFName("default")))
 }
 
 func main() {
-    http.Handle("/res", http.FileServer(http.Dir(home + "/res/sts")))
-    http.HandleFunc("/", defaultHandler)
-    panic(http.ListenAndServe(":" + strconv.Itoa(port), nil))
+	http.Handle("/sts/", http.FileServer(http.Dir("./res/")))
+	http.HandleFunc("/", defaultHandler)
+	panic(http.ListenAndServe(":"+strconv.Itoa(port), nil))
 }
-
 
 // Default Request Handler
 func defaultHandler(w http.ResponseWriter, r *http.Request) {
- 	renderTemplate(w, "default")
+	renderTemplate(w, "default")
 }
- 
+
 func tmplFName(tmpl string) string {
-	return home + "/res/templates/" + tmpl + ".html"
+	n := "./res/templates/" + tmpl + ".html"
+	return n
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string) {
-    err := tmpls.ExecuteTemplate(w, tmplFName(tmpl), nil)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-    }
+	log.Println("Rendering " + tmpl)
+	err := tmpls.ExecuteTemplate(w, tmpl+".html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
