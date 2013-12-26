@@ -2,25 +2,17 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"testing"
 )
 
-const TEXTHTML = "text/html; charset=utf-8"
-
-var g_address string
-
-func init() {
-	// parameters
-	flag.StringVar(&g_address, "g_address", "127.0.0.1:8088", "Server address")
-	flag.Parse()
-}
+const ADDRESS = "127.0.0.1:8088"
 
 func RestGet(tb testing.TB, res string, ctype string) []byte {
-	resp, err := http.Get("http://" + g_address + "/")
+	resp, err := http.Get("http://" + ADDRESS + res)
 	if err != nil {
 		tb.Error(err)
 		return nil
@@ -37,6 +29,7 @@ func RestGet(tb testing.TB, res string, ctype string) []byte {
 	}
 	if resp.Header["Content-Type"][0] != ctype {
 		tb.Error("Wrong Content-Type", resp.Header["Content-Type"][0])
+		return nil
 	}
 	return d
 }
@@ -61,5 +54,31 @@ func TestHome(t *testing.T) {
 func BenchmarkHome(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		RestGet(b, "/", TEXTHTML)
+	}
+}
+
+func TestMsgs(t *testing.T) {
+	data := RestGet(t, "/msg/", APPJSON)
+	if data == nil {
+		t.Error("No data found")
+		return
+	}
+	var msgs []BaseMsg
+	err := json.Unmarshal(data, &msgs)
+	if err != nil {
+		t.Error(err, " on blob ", string(data))
+	}
+	for _, msg := range msgs {
+		if msg.Success && len(msg.Message) > 0 {
+			t.Log(msg.Message)
+		} else {
+			t.Error("Wrong message ", msg)
+		}
+	}
+}
+
+func BenchmarkMsgs(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", APPJSON)
 	}
 }
