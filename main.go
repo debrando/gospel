@@ -7,21 +7,21 @@ import (
 	"strconv"
 )
 
-var port int
-var tmpls *template.Template
+var g_port int
+var g_tmpls *template.Template
 
 func init() {
 	// parameters
-	flag.IntVar(&port, "port", 8088, "Listening port")
+	flag.IntVar(&g_port, "port", 8088, "Listening port")
 	flag.Parse()
 	// templates
-	tmpls = template.Must(template.ParseFiles(tmplFName("default")))
+	g_tmpls = template.Must(template.ParseFiles(tmplFName("default")))
 }
 
 func main() {
 	http.Handle("/sts/", http.FileServer(http.Dir("./res/")))
 	http.HandleFunc("/", defaultHandler)
-	panic(http.ListenAndServe(":"+strconv.Itoa(port), nil))
+	panic(http.ListenAndServe(":"+strconv.Itoa(g_port), nil))
 }
 
 // Default Request Handler
@@ -35,7 +35,7 @@ func tmplFName(tmpl string) string {
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string) {
-	err := tmpls.ExecuteTemplate(w, tmpl+".html", nil)
+	err := g_tmpls.ExecuteTemplate(w, tmpl+".html", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
