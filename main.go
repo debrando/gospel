@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -36,7 +35,6 @@ func tmplFName(tmpl string) string {
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string) {
-	log.Println("Rendering " + tmpl)
 	err := tmpls.ExecuteTemplate(w, tmpl+".html", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
