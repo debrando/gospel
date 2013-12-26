@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+const TEXTHTML = "text/html; charset=utf-8"
+
 var g_address string
 
 func init() {
@@ -17,14 +19,14 @@ func init() {
 	flag.Parse()
 }
 
-func RestGet(tb testing.TB, res string) []byte {
+func RestGet(tb testing.TB, res string, ctype string) []byte {
 	resp, err := http.Get("http://" + g_address + "/")
 	if err != nil {
 		tb.Error(err)
 		return nil
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		tb.Error("Wrong response code ", err, ", expecting 200")
 		return nil
 	}
@@ -32,31 +34,15 @@ func RestGet(tb testing.TB, res string) []byte {
 	if err != nil {
 		tb.Error(err)
 		return nil
+	}
+	if resp.Header["Content-Type"][0] != ctype {
+		tb.Error("Wrong Content-Type", resp.Header["Content-Type"][0])
 	}
 	return d
 }
 
-func TBHome(tb testing.TB) string {
-	resp, err := http.Get(g_address)
-	if err != nil {
-		tb.Error(err)
-		return ""
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		tb.Error("Wrong response code ", err, ", expecting 200")
-		return ""
-	}
-	d, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		tb.Error(err)
-		return ""
-	}
-	return string(d)
-}
-
 func TestHome(t *testing.T) {
-	data := RestGet(t, "/")
+	data := RestGet(t, "/", TEXTHTML)
 	if data == nil {
 		t.Error("No data found")
 		return
@@ -74,6 +60,6 @@ func TestHome(t *testing.T) {
 
 func BenchmarkHome(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		RestGet(b, "/")
+		RestGet(b, "/", TEXTHTML)
 	}
 }
