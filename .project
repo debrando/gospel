@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>gospel</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>com.googlecode.goclipse.goBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>goclipse.goNature</nature>
+	</natures>
+	<filteredResources>
+		<filter>
+			<id>0</id>
+			<name>src/res/sts</name>
+			<type>25</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-true-true-^(sts|templates)$</arguments>
+			</matcher>
+		</filter>
+	</filteredResources>
+</projectDescription>
