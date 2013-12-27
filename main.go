@@ -2,45 +2,41 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"html/template"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"os"
-	"strconv"
 )
 
 const TEXTHTML = "text/html; charset=utf-8"
 const APPJSON = "application/json; charset=utf-8"
-const LOCADDRESS = "127.0.0.1:8088"
-const HKADDRESS = "http://gospel99.herokuapp.com/"
+const LOCADDRESS = "http://127.0.0.1:8088"
+const HKADDRESS = "http://gospel99.herokuapp.com"
 
 type BaseMsg struct {
 	Success bool
 	Message string
 }
 
-var g_port int
 var g_tmpls *template.Template
 var g_mgos *mgo.Session
 var g_ishk bool
-var g_addr, g_mgourl string
+var g_addr, g_mgourl, g_port string
 
 func init() {
-	// parameters
-	flag.IntVar(&g_port, "port", 8088, "Listening port")
-	flag.Parse()
 	// env
-	g_mgourl = os.ExpandEnv("$MONGOLAB_URI")
+	g_mgourl = os.Getenv("MONGOLAB_URI")
+	g_port = os.ExpandEnv("$PORT")
 	// loc-or-hk
 	g_ishk = g_mgourl != ""
 	if g_ishk {
 		g_addr = HKADDRESS
 	} else {
 		g_mgourl = "127.0.0.1:27017/gospel"
-		g_addr = LOCADDRESS
+		g_port = "8088"
+		g_addr = "127.0.0.1:" + g_port
 	}
 }
 
@@ -59,7 +55,7 @@ func main() {
 	http.HandleFunc("/msg/", msgHandler)
 	http.HandleFunc("/", defaultHandler)
 	// http server
-	panic(http.ListenAndServe(":"+strconv.Itoa(g_port), nil))
+	panic(http.ListenAndServe(":"+g_port, nil))
 }
 
 // Default Request Handler
