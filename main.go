@@ -23,7 +23,7 @@ type BaseMsg struct {
 var g_tmpls *template.Template
 var g_mgos *mgo.Session
 var g_ishk bool
-var g_addr, g_mgourl, g_port string
+var g_servaddr, g_mgourl, g_port string
 
 func init() {
 	// env
@@ -32,12 +32,13 @@ func init() {
 	// loc-or-hk
 	g_ishk = g_mgourl != ""
 	if g_ishk {
-		g_addr = HKADDRESS
+		g_servaddr = "http://127.0.0.1:8088"
 	} else {
 		g_mgourl = "127.0.0.1:27017/gospel"
 		g_port = "8088"
-		g_addr = "127.0.0.1:" + g_port
+		g_servaddr = HKADDRESS
 	}
+	fmt.Println("Running on/against " + g_servaddr)
 }
 
 func main() {
