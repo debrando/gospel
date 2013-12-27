@@ -1,1 +1,1 @@
-web: gospel
+web: main

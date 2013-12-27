@@ -9,10 +9,8 @@ import (
 	"testing"
 )
 
-const ADDRESS = "127.0.0.1:8088"
-
 func RestGet(tb testing.TB, res string, ctype string) []byte {
-	resp, err := http.Get("http://" + ADDRESS + res)
+	resp, err := http.Get("http://" + g_addr + res)
 	if err != nil {
 		tb.Error(err)
 		return nil
