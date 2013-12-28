@@ -2,7 +2,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	msgpack "github.com/ugorji/go/codec"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -10,7 +12,10 @@ import (
 )
 
 func RestGet(tb testing.TB, res string, ctype string) []byte {
-	resp, err := http.Get(g_servaddr + res)
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", g_servaddr+res, nil)
+	req.Header.Add("Accept", ctype)
+	resp, err := client.Do(req)
 	if err != nil {
 		tb.Error(err)
 		return nil
@@ -25,9 +30,8 @@ func RestGet(tb testing.TB, res string, ctype string) []byte {
 		tb.Error(err)
 		return nil
 	}
-	if resp.Header["Content-Type"][0] != ctype {
-		tb.Error("Wrong Content-Type", resp.Header["Content-Type"][0])
-		return nil
+	if !checkContent(resp.Header.Get("Content-Type"), ctype) {
+		tb.Error("Wrong Content-Type", resp.Header.Get("Content-Type"))
 	}
 	return d
 }
@@ -55,7 +59,7 @@ func BenchmarkHome(b *testing.B) {
 	}
 }
 
-func TestGetMsgs(t *testing.T) {
+func TestGetMsgsJSON(t *testing.T) {
 	data := RestGet(t, "/msg/", APPJSON)
 	if data == nil {
 		t.Error("No data found")
@@ -75,8 +79,36 @@ func TestGetMsgs(t *testing.T) {
 	}
 }
 
-func BenchmarkGetMsgs(b *testing.B) {
+func TestGetMsgsMSGPack(t *testing.T) {
+	r := bytes.NewBuffer(RestGet(t, "/msg/", MSGPACK))
+	if r == nil {
+		t.Error("No data found")
+		return
+	}
+	var msgs []BaseMsg
+	var mh msgpack.MsgpackHandle
+	dec := msgpack.NewDecoder(r, &mh)
+	err := dec.Decode(&msgs)
+	if err != nil {
+		t.Error(err, " on blob msgpacked")
+	}
+	for _, msg := range msgs {
+		if !msg.Success {
+			t.Log(msg.Message)
+		} else {
+			t.Error("Wrong message ", msg)
+		}
+	}
+}
+
+func BenchmarkGetMsgsJSON(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		RestGet(b, "/msg/", APPJSON)
+	}
+}
+
+func BenchmarkGetMsgsMSGPack(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", MSGPACK)
 	}
 }

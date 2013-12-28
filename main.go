@@ -3,18 +3,21 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	msgpack "github.com/ugorji/go/codec"
 	"html/template"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 )
 
 const (
-	TEXTHTML   = "text/html; charset=utf-8"
-	APPJSON    = "application/json; charset=utf-8"
+	TEXTHTML   = "text/html"
+	APPJSON    = "application/json"
+	MSGPACK    = "application/x-msgpack"
 	LOCADDRESS = "http://127.0.0.1:8088"
 	HKADDRESS  = "http://gospel99.herokuapp.com"
 )
@@ -42,7 +45,7 @@ func init() {
 		g_port = "8088"
 		fmt.Println("Running on local ", LOCADDRESS)
 	}
-	if os.Getenv("LOCALTEST") == "y" {
+	if os.Getenv("LOCALTEST") != "n" {
 		g_servaddr = LOCADDRESS
 		fmt.Println("Tests to local ", LOCADDRESS)
 	} else {
@@ -74,22 +77,50 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "default")
 }
 
+// return if accept header has the given content type (or */*, or nothing)
+func checkContent(ah string, ctype string) bool {
+	m, err := regexp.MatchString(`(?i).*(\s+|^)(`+ctype+`|\*/\*)(;|$).*|^$`, ah)
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
+// set the content type if originally accepted, returning if done
+func setContent(w http.ResponseWriter, r *http.Request, ctype string) bool {
+	isit := checkContent(r.Header.Get("Accept"), ctype)
+	if isit {
+		w.Header().Set("Content-Type", ctype)
+	}
+	return isit
+}
+
 // Message Handlers
 func msgHandler(w http.ResponseWriter, r *http.Request) {
 	c := g_mgos.DB("").C("messages")
 	switch r.Method {
 	case "GET":
-		w.Header().Set("Content-Type", APPJSON)
 		var v []BaseMsg
 		err := c.Find(bson.M{"success": false}).Sort("ts").Limit(100).Iter().All(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		b, err := json.Marshal(v)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if setContent(w, r, APPJSON) {
+			b, err := json.Marshal(v)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			fmt.Fprint(w, string(b))
+		} else if setContent(w, r, MSGPACK) {
+			var mh msgpack.MsgpackHandle
+			enc := msgpack.NewEncoder(w, &mh)
+			err := enc.Encode(v)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		} else {
+			http.Error(w, "Unsupported media type "+r.Header.Get("Accept"), http.StatusNotImplemented)
 		}
-		fmt.Fprint(w, string(b))
 	case "POST":
 		r.ParseForm()
 		for _, m := range r.Form["msg"] {
