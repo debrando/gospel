@@ -1,16 +1,19 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	msgpack "github.com/ugorji/go/codec"
 	"html/template"
+	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -26,6 +29,11 @@ type BaseMsg struct {
 	Success bool
 	Message string
 	Ts      time.Time
+}
+
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
 }
 
 var (
@@ -66,10 +74,33 @@ func main() {
 	defer g_mgos.Close()
 	// handles
 	http.Handle("/sts/", http.FileServer(http.Dir("./res/")))
-	http.HandleFunc("/msg/", msgHandler)
-	http.HandleFunc("/", defaultHandler)
+	http.HandleFunc("/msg/", makeGzipHandler(msgHandler))
+	http.HandleFunc("/", makeGzipHandler(defaultHandler))
 	// http server
 	panic(http.ListenAndServe(":"+g_port, nil))
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	if "" == w.Header().Get("Content-Type") {
+		// If no content type, apply sniffing algorithm to un-gzipped body.
+		w.Header().Set("Content-Type", http.DetectContentType(b))
+	}
+	return w.Writer.Write(b)
+}
+
+// Wrapper for handling gzip encoding, https://gist.github.com/the42/1956518
+func makeGzipHandler(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			fn(w, r)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		gzr := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+		fn(gzr, r)
+	}
 }
 
 // Default Request Handler
@@ -139,6 +170,7 @@ func msgHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, r.Method+" not allowed", http.StatusMethodNotAllowed)
 	}
+	//log.Println(w.Header())
 }
 
 // Create full name of template

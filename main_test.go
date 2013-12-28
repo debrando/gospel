@@ -11,9 +11,12 @@ import (
 	"testing"
 )
 
-func RestGet(tb testing.TB, res string, ctype string) []byte {
+func RestGet(tb testing.TB, res string, ctype string, gzip bool) []byte {
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", g_servaddr+res, nil)
+	if !gzip {
+		req.Header.Add("Accept-Encoding", "")
+	}
 	req.Header.Add("Accept", ctype)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -36,8 +39,10 @@ func RestGet(tb testing.TB, res string, ctype string) []byte {
 	return d
 }
 
+// UTs
+
 func TestHome(t *testing.T) {
-	data := RestGet(t, "/", TEXTHTML)
+	data := RestGet(t, "/", TEXTHTML, true)
 	if data == nil {
 		t.Error("No data found")
 		return
@@ -53,14 +58,8 @@ func TestHome(t *testing.T) {
 	}
 }
 
-func BenchmarkHome(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		RestGet(b, "/", TEXTHTML)
-	}
-}
-
 func TestGetMsgsJSON(t *testing.T) {
-	data := RestGet(t, "/msg/", APPJSON)
+	data := RestGet(t, "/msg/", APPJSON, true)
 	if data == nil {
 		t.Error("No data found")
 		return
@@ -80,7 +79,7 @@ func TestGetMsgsJSON(t *testing.T) {
 }
 
 func TestGetMsgsMSGPack(t *testing.T) {
-	r := bytes.NewBuffer(RestGet(t, "/msg/", MSGPACK))
+	r := bytes.NewBuffer(RestGet(t, "/msg/", MSGPACK, true))
 	if r == nil {
 		t.Error("No data found")
 		return
@@ -101,14 +100,40 @@ func TestGetMsgsMSGPack(t *testing.T) {
 	}
 }
 
-func BenchmarkGetMsgsJSON(b *testing.B) {
+// Benchmarks
+
+func BenchmarkHomeGZ(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		RestGet(b, "/msg/", APPJSON)
+		RestGet(b, "/", TEXTHTML, true)
 	}
 }
 
-func BenchmarkGetMsgsMSGPack(b *testing.B) {
+func BenchmarkHomePlain(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		RestGet(b, "/msg/", MSGPACK)
+		RestGet(b, "/", TEXTHTML, false)
+	}
+}
+
+func BenchmarkGetMsgsJSonGZ(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", APPJSON, true)
+	}
+}
+
+func BenchmarkGetMsgsMSGPackGZ(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", MSGPACK, true)
+	}
+}
+
+func BenchmarkGetMsgsJSonPlain(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", APPJSON, false)
+	}
+}
+
+func BenchmarkGetMsgsMSGPackPlain(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", MSGPACK, false)
 	}
 }
