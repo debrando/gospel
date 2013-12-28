@@ -55,7 +55,7 @@ func BenchmarkHome(b *testing.B) {
 	}
 }
 
-func TestMsgs(t *testing.T) {
+func TestGetMsgs(t *testing.T) {
 	data := RestGet(t, "/msg/", APPJSON)
 	if data == nil {
 		t.Error("No data found")
@@ -67,7 +67,7 @@ func TestMsgs(t *testing.T) {
 		t.Error(err, " on blob ", string(data))
 	}
 	for _, msg := range msgs {
-		if msg.Success && len(msg.Message) > 0 {
+		if !msg.Success {
 			t.Log(msg.Message)
 		} else {
 			t.Error("Wrong message ", msg)
@@ -75,7 +75,7 @@ func TestMsgs(t *testing.T) {
 	}
 }
 
-func BenchmarkMsgs(b *testing.B) {
+func BenchmarkGetMsgs(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		RestGet(b, "/msg/", APPJSON)
 	}
