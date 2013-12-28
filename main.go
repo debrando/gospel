@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	msgpack "github.com/ugorji/go/codec"
+	"github.com/ugorji/go/codec"
 	"html/template"
 	"io"
 	"labix.org/v2/mgo"
@@ -53,7 +53,7 @@ func init() {
 		g_port = "8088"
 		fmt.Println("Running on local ", LOCADDRESS)
 	}
-	if os.Getenv("LOCALTEST") != "n" {
+	if g_mgourl != "" && os.Getenv("LOCALTEST") != "n" {
 		g_servaddr = LOCADDRESS
 		fmt.Println("Tests to local ", LOCADDRESS)
 	} else {
@@ -143,8 +143,8 @@ func msgHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Fprint(w, string(b))
 		} else if setContent(w, r, MSGPACK) {
-			var mh msgpack.MsgpackHandle
-			enc := msgpack.NewEncoder(w, &mh)
+			var mh codec.MsgpackHandle
+			enc := codec.NewEncoder(w, &mh)
 			err := enc.Encode(v)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -4,7 +4,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	msgpack "github.com/ugorji/go/codec"
+	"github.com/ugorji/go/codec"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -85,8 +85,8 @@ func TestGetMsgsMSGPack(t *testing.T) {
 		return
 	}
 	var msgs []BaseMsg
-	var mh msgpack.MsgpackHandle
-	dec := msgpack.NewDecoder(r, &mh)
+	var mh codec.MsgpackHandle
+	dec := codec.NewDecoder(r, &mh)
 	err := dec.Decode(&msgs)
 	if err != nil {
 		t.Error(err, " on blob msgpacked")
