@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"compress/zlib"
 	"encoding/json"
 	"fmt"
 	"github.com/ugorji/go/codec"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -74,8 +76,8 @@ func main() {
 	defer g_mgos.Close()
 	// handles
 	http.Handle("/sts/", http.FileServer(http.Dir("./res/")))
-	http.HandleFunc("/msg/", makeGzipHandler(msgHandler))
-	http.HandleFunc("/", makeGzipHandler(defaultHandler))
+	http.HandleFunc("/msg/", makeGzipHandler(msgHandler, zlib.BestSpeed))
+	http.HandleFunc("/", makeGzipHandler(defaultHandler, zlib.BestSpeed))
 	// http server
 	panic(http.ListenAndServe(":"+g_port, nil))
 }
@@ -89,17 +91,26 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 // Wrapper for handling gzip encoding, https://gist.github.com/the42/1956518
-func makeGzipHandler(fn http.HandlerFunc) http.HandlerFunc {
+func makeGzipHandler(fn http.HandlerFunc, complvl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		ae := r.Header.Get("Accept-Encoding")
+		//ow := w.(io.Writer)
+		if strings.Contains(ae, "gzip") {
+			w.Header().Set("Content-Encoding", "gzip")
+			ow, _ := gzip.NewWriterLevel(w, complvl)
+			defer ow.Close()
+			gzr := gzipResponseWriter{Writer: ow, ResponseWriter: w}
+			fn(gzr, r)
+		} else if strings.Contains(ae, "deflate") {
+			w.Header().Set("Content-Encoding", "deflate")
+			ow, _ := zlib.NewWriterLevel(w, complvl)
+			defer ow.Close()
+			gzr := gzipResponseWriter{Writer: ow, ResponseWriter: w}
+			fn(gzr, r)
+		} else {
 			fn(w, r)
 			return
 		}
-		w.Header().Set("Content-Encoding", "gzip")
-		gz := gzip.NewWriter(w)
-		defer gz.Close()
-		gzr := gzipResponseWriter{Writer: gz, ResponseWriter: w}
-		fn(gzr, r)
 	}
 }
 
@@ -129,10 +140,18 @@ func setContent(w http.ResponseWriter, r *http.Request, ctype string) bool {
 // Message Handlers
 func msgHandler(w http.ResponseWriter, r *http.Request) {
 	c := g_mgos.DB("").C("messages")
+	r.ParseForm()
+	lim := 1000
+	for _, m := range r.Form["limit"] {
+		l, err := strconv.Atoi(m)
+		if err == nil {
+			lim = l
+		}
+	}
 	switch r.Method {
 	case "GET":
 		var v []BaseMsg
-		err := c.Find(bson.M{"success": false}).Sort("ts").Limit(100).Iter().All(&v)
+		err := c.Find(bson.M{"success": false}).Sort("ts").Limit(lim).Iter().All(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -153,7 +172,6 @@ func msgHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Unsupported media type "+r.Header.Get("Accept"), http.StatusNotImplemented)
 		}
 	case "POST":
-		r.ParseForm()
 		for _, m := range r.Form["msg"] {
 			err := c.Insert(&BaseMsg{Success: false, Message: m, Ts: time.Now()})
 			if err != nil {

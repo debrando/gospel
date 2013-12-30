@@ -102,27 +102,15 @@ func TestGetMsgsMSGPack(t *testing.T) {
 
 // Benchmarks
 
-func BenchmarkHomeGZ(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		RestGet(b, "/", TEXTHTML, true)
-	}
-}
-
 func BenchmarkHomePlain(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		RestGet(b, "/", TEXTHTML, false)
 	}
 }
 
-func BenchmarkGetMsgsJSonGZ(b *testing.B) {
+func BenchmarkHomeGZip(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		RestGet(b, "/msg/", APPJSON, true)
-	}
-}
-
-func BenchmarkGetMsgsMSGPackGZ(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		RestGet(b, "/msg/", MSGPACK, true)
+		RestGet(b, "/", TEXTHTML, true)
 	}
 }
 
@@ -131,9 +119,20 @@ func BenchmarkGetMsgsJSonPlain(b *testing.B) {
 		RestGet(b, "/msg/", APPJSON, false)
 	}
 }
+func BenchmarkGetMsgsJSonGZip(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", APPJSON, true)
+	}
+}
 
 func BenchmarkGetMsgsMSGPackPlain(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		RestGet(b, "/msg/", MSGPACK, false)
+	}
+}
+
+func BenchmarkGetMsgsMSGPackGZip(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", MSGPACK, true)
 	}
 }
