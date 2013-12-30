@@ -23,6 +23,7 @@ const (
 	TEXTHTML   = "text/html"
 	APPJSON    = "application/json"
 	MSGPACK    = "application/x-msgpack"
+	BSON       = "application/x-bson"
 	LOCADDRESS = "http://127.0.0.1:8088"
 	HKADDRESS  = "http://gospel99.herokuapp.com"
 )
@@ -94,7 +95,6 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 func makeGzipHandler(fn http.HandlerFunc, complvl int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ae := r.Header.Get("Accept-Encoding")
-		//ow := w.(io.Writer)
 		if strings.Contains(ae, "gzip") {
 			w.Header().Set("Content-Encoding", "gzip")
 			ow, _ := gzip.NewWriterLevel(w, complvl)
@@ -119,7 +119,7 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "default")
 }
 
-// return if accept header has the given content type (or */*, or nothing)
+// return if accepts header has the given content type (or */*, or nothing)
 func checkContent(ah string, ctype string) bool {
 	m, err := regexp.MatchString(`(?i).*(\s+|^)(`+ctype+`|\*/\*)(;|$).*|^$`, ah)
 	if err != nil {
@@ -141,17 +141,18 @@ func setContent(w http.ResponseWriter, r *http.Request, ctype string) bool {
 func msgHandler(w http.ResponseWriter, r *http.Request) {
 	c := g_mgos.DB("").C("messages")
 	r.ParseForm()
-	lim := 1000
-	for _, m := range r.Form["limit"] {
-		l, err := strconv.Atoi(m)
-		if err == nil {
-			lim = l
-		}
-	}
 	switch r.Method {
 	case "GET":
+		lim := 1000
+		for _, m := range r.Form["limit"] {
+			l, err := strconv.Atoi(m)
+			if err == nil {
+				lim = l
+			}
+		}
+		q := bson.M{"success": false}
 		var v []BaseMsg
-		err := c.Find(bson.M{"success": false}).Sort("ts").Limit(lim).Iter().All(&v)
+		err := c.Find(q).Sort("ts").Limit(lim).All(&v)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -160,7 +161,7 @@ func msgHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			fmt.Fprint(w, string(b))
+			w.Write(b)
 		} else if setContent(w, r, MSGPACK) {
 			var mh codec.MsgpackHandle
 			enc := codec.NewEncoder(w, &mh)
@@ -168,6 +169,12 @@ func msgHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
+		} else if setContent(w, r, BSON) {
+			b, err := bson.Marshal(v)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			w.Write(b)
 		} else {
 			http.Error(w, "Unsupported media type "+r.Header.Get("Accept"), http.StatusNotImplemented)
 		}

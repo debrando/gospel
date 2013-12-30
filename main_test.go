@@ -136,3 +136,15 @@ func BenchmarkGetMsgsMSGPackGZip(b *testing.B) {
 		RestGet(b, "/msg/", MSGPACK, true)
 	}
 }
+
+func BenchmarkGetMsgsBSonPlain(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", MSGPACK, false)
+	}
+}
+
+func BenchmarkGetMsgsBSonGZip(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RestGet(b, "/msg/", MSGPACK, true)
+	}
+}
